@@ -15,8 +15,6 @@ marshmallow==3.0.0rc5
 numpy
 oauthlib==3.1.1
 Pillow
-polyaxon-client
-polyaxon-schemas
 polystores==0.2.5
 protobuf
 psutil
