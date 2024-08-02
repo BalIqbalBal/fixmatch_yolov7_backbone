@@ -390,6 +390,9 @@ def train_epoch(
     ):
         loss, pred_labels, true_labels = train_step(args, model, batch, meters)
 
+        all_pred_labels = []
+        all_true_labels = []
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -398,6 +401,9 @@ def train_epoch(
         # Update EMA model if configured
         if args.use_ema:
             ema_model(model)
+        
+        all_pred_labels.append(pred_labels.cpu())
+        all_true_labels.append(true_labels.cpu())
 
         if args.pbar:
             p_bar.set_description(
