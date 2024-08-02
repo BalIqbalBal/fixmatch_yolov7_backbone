@@ -1,0 +1,13 @@
+Metadata-Version: 2.1
+Name: polyaxon_schemas
+Version: 66
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Dist: hestia==0.3.1
+Requires-Dist: Jinja2>=3.1.2
+Requires-Dist: marshmallow
+Requires-Dist: numpy>=1.15.2
+Requires-Dist: python-dateutil>=2.7.3
+Requires-Dist: pytz>=2018.9
+Requires-Dist: rhea

@@ -1,0 +1,12 @@
+Metadata-Version: 2.1
+Name: polyaxon_client
+Version: 66
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Dist: polyaxon-schemas
+Requires-Dist: polystores>=0.2.4
+Requires-Dist: psutil>=5.4.7
+Requires-Dist: requests>=2.20.0
+Requires-Dist: requests-toolbelt>=0.8.0
+Requires-Dist: websocket-client>=0.53.0
