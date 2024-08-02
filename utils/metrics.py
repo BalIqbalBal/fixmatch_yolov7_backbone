@@ -3,7 +3,7 @@ from collections import namedtuple
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix
-
+import numpy as np
 
 evaluation_metrics = namedtuple(
     "evaluation_metrics",
@@ -57,7 +57,11 @@ def f1(output: torch.Tensor, target: torch.Tensor, average: str = "weighted"):
 
 def confusion_matrix_metrics(output: torch.Tensor, target: torch.Tensor):
     cm = confusion_matrix(target.cpu(), output.cpu())
-    tn, fp, fn, tp = cm.ravel()
+    # For multi-class, extract metrics from the confusion matrix
+    tp = np.diag(cm)
+    fp = cm.sum(axis=0) - tp
+    fn = cm.sum(axis=1) - tp
+    tn = cm.sum() - (fp + fn + tp)
     return tp, fp, tn, fn
 
 
