@@ -425,7 +425,7 @@ def train_epoch(
     all_pred_labels = torch.cat(all_pred_labels)
     all_true_labels = torch.cat(all_true_labels)
 
-    tp, fp, tn, fn = confusion_matrix_metrics(all_true_labels, all_pred_labels).ravel()
+    tp, fp, tn, fn = confusion_matrix_metrics(all_true_labels, all_pred_labels)
 
     train_metrics = evaluation_metrics(
         meters["total_loss"].avg,
