@@ -1,7 +1,0 @@
-08/02/2024 11:59:48 - INFO - root -   Seed is set to 65
-08/02/2024 11:59:48 - INFO - root -   -------- Starting FixMatch Model Training --------
-08/02/2024 11:59:48 - INFO - root -   	- Labeled train set: 250
-08/02/2024 11:59:48 - INFO - root -   	- Unlabeled train set: 29569
-08/02/2024 11:59:48 - INFO - root -   	- Validation set: 1
-08/02/2024 11:59:48 - INFO - root -   	- Test set: 413
-08/02/2024 11:59:48 - INFO - root -   -------- MODEL --------
