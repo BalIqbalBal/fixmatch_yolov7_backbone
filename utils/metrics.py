@@ -2,7 +2,7 @@ from collections import namedtuple
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
-from sklearn.metrics import precision_score, recall_score, f1_score
+from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix
 
 
 evaluation_metrics = namedtuple(
@@ -20,6 +20,10 @@ evaluation_metrics = namedtuple(
         "prec_weighted",
         "rec_weighted",
         "f1_weighted",
+        "tp",
+        "fp",
+        "tn",
+        "fn",
     ],
 )
 
@@ -49,6 +53,12 @@ def recall(output: torch.Tensor, target: torch.Tensor, average: str = "weighted"
 
 def f1(output: torch.Tensor, target: torch.Tensor, average: str = "weighted"):
     return f1_score(target.cpu(), output.cpu(), average=average)
+
+
+def confusion_matrix_metrics(output: torch.Tensor, target: torch.Tensor):
+    cm = confusion_matrix(target.cpu(), output.cpu())
+    tn, fp, fn, tp = cm.ravel()
+    return tp, fp, tn, fn
 
 
 def write_metrics(writer: SummaryWriter, epoch: int, metrics: evaluation_metrics, descriptor: str = "val"):
@@ -92,5 +102,25 @@ def write_metrics(writer: SummaryWriter, epoch: int, metrics: evaluation_metrics
     writer.add_scalar(
         "Classification_metrics/{}_f1score_weighted".format(descriptor),
         metrics.f1_weighted,
+        epoch,
+    )
+    writer.add_scalar(
+        "Confusion_matrix/{}_true_positives".format(descriptor),
+        metrics.tp,
+        epoch,
+    )
+    writer.add_scalar(
+        "Confusion_matrix/{}_false_positives".format(descriptor),
+        metrics.fp,
+        epoch,
+    )
+    writer.add_scalar(
+        "Confusion_matrix/{}_true_negatives".format(descriptor),
+        metrics.tn,
+        epoch,
+    )
+    writer.add_scalar(
+        "Confusion_matrix/{}_false_negatives".format(descriptor),
+        metrics.fn,
         epoch,
     )

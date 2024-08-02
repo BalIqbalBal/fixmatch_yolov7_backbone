@@ -22,7 +22,8 @@ from eval import evaluate
 from datasets.config import IMG_SIZE
 from utils.train import EMA, cosine_lr_decay, get_wd_param_list
 from utils.eval import AverageMeterSet
-from utils.metrics import write_metrics
+from utils.metrics import write_metrics, accuracy, precision, recall, f1, evaluation_metrics, confusion_matrix_metrics
+
 from utils.misc import save_state, load_state
 
 MIN_VALIDATION_SIZE = 50
@@ -276,7 +277,7 @@ def train(
         start_epoch = state_dict["epoch"]
 
     for epoch in range(start_epoch, args.epochs):
-        train_total_loss, train_labeled_loss, train_unlabeled_loss = train_epoch(
+        train_metrics, train_total_loss, train_labeled_loss, train_unlabeled_loss = train_epoch(
             args,
             model,
             ema_model,
@@ -299,6 +300,8 @@ def train(
         writer.add_scalar("Loss/train_total", train_total_loss, epoch)
         writer.add_scalar("Loss/train_labeled", train_labeled_loss, epoch)
         writer.add_scalar("Loss/train_unlabeled", train_unlabeled_loss, epoch)
+
+        write_metrics(writer, epoch, train_metrics, descriptor="train")
         write_metrics(writer, epoch, val_metrics, descriptor="val")
         write_metrics(writer, epoch, test_metrics, descriptor="test")
         writer.flush()
@@ -385,7 +388,7 @@ def train_epoch(
     for batch_idx, batch in enumerate(
         zip(train_loader_labeled, train_loader_unlabeled)
     ):
-        loss = train_step(args, model, batch, meters)
+        loss, pred_labels, true_labels = train_step(args, model, batch, meters)
 
         optimizer.zero_grad()
         loss.backward()
@@ -404,6 +407,8 @@ def train_epoch(
                     batch=batch_idx + 1,
                     iter=len(train_loader_labeled),
                     lr=scheduler.get_last_lr()[0],
+                    loss=meters["total_loss"].avg,
+                    acc1=meters["acc1"].avg
                 )
             )
             p_bar.update()
@@ -411,7 +416,36 @@ def train_epoch(
     if args.pbar:
         p_bar.close()
 
+    all_pred_labels = torch.cat(all_pred_labels)
+    all_true_labels = torch.cat(all_true_labels)
+
+    tp, fp, tn, fn = confusion_matrix_metrics(all_true_labels, all_pred_labels).ravel()
+
+    train_metrics = evaluation_metrics(
+        meters["total_loss"].avg,
+        meters["labeled_loss"].avg,
+        meters["unlabeled_loss"].avg,
+        top1=meters["top1"].avg,
+        top5=meters["top5"].avg,
+        prec=precision(pred_labels.cpu(), true_labels.cpu(), average="micro"),
+        rec=recall(pred_labels.cpu(), true_labels.cpu(), average="micro"),
+        f1=f1(pred_labels.cpu(), true_labels.cpu(), average="micro"),
+        prec_macro=precision(pred_labels.cpu(), true_labels.cpu(), average="macro"),
+        rec_macro=recall(pred_labels.cpu(), true_labels.cpu(), average="macro"),
+        f1_macro=f1(pred_labels.cpu(), true_labels.cpu(), average="macro"),
+        prec_weighted=precision(
+            pred_labels.cpu(), true_labels.cpu(), average="weighted"
+        ),
+        rec_weighted=recall(pred_labels.cpu(), true_labels.cpu(), average="weighted"),
+        f1_weighted=f1(pred_labels.cpu(), true_labels.cpu(), average="weighted"),
+        tp=tp,
+        fp=fp,
+        tn=tn,
+        fn=fn
+    )
+
     return (
+        train_metrics,
         meters["total_loss"].avg,
         meters["labeled_loss"].avg,
         meters["unlabeled_loss"].avg,
@@ -469,8 +503,15 @@ def train_step(args: argparse.Namespace, model: torch.nn.Module, batch: Tuple, m
     # Compute total loss
     loss = labeled_loss.mean() + args.wu * unlabeled_loss
 
+    # Compute accuracy for labeled data
+    acc1, acc5 = accuracy(logits_x, labels, topk=(1, 5))
+
     meters.update("total_loss", loss.item(), 1)
     meters.update("labeled_loss", labeled_loss.mean().item(), logits_x.size()[0])
     meters.update("unlabeled_loss", unlabeled_loss.item(), logits_u_strong.size()[0])
+    meters.update("acc1", acc1.item(), logits_x.size()[0])
+    meters.update("acc5", acc5.item(), logits_x.size()[0])
 
-    return loss
+    pred_labels = torch.argmax(logits_x, dim=1)
+
+    return loss, pred_labels, labels

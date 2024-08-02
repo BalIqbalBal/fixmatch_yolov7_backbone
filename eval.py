@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from utils.eval import AverageMeterSet
-from utils.metrics import accuracy, precision, recall, f1, evaluation_metrics
+from utils.metrics import accuracy, precision, recall, f1, evaluation_metrics, confusion_matrix_metrics
 
 
 logger = logging.getLogger()
@@ -95,6 +95,8 @@ def evaluate(
     pred_labels = torch.cat(pred_labels)
     true_labels = torch.cat(true_labels)
 
+    tp, fp, tn, fn = confusion_matrix_metrics(pred_labels.cpu(), true_labels.cpu())
+
     eval_tuple = evaluation_metrics(
         loss=meters["loss"].avg,
         top1=meters["top1"].avg,
@@ -110,6 +112,10 @@ def evaluate(
         ),
         rec_weighted=recall(pred_labels.cpu(), true_labels.cpu(), average="weighted"),
         f1_weighted=f1(pred_labels.cpu(), true_labels.cpu(), average="weighted"),
+        tp=tp,
+        fp=fp,
+        tn=tn,
+        fn=fn
     )
     return eval_tuple
 
