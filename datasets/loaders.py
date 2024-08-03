@@ -1,13 +1,7 @@
-from typing import Union, Tuple, NamedTuple, List
-
-import numpy as np
-from torch.utils.data import (
-    Dataset,
-    DataLoader,
-    Sampler,
-    RandomSampler,
-    WeightedRandomSampler,
-)
+from torch.utils.data import DataLoader, Dataset
+from torch.utils.data.sampler import Sampler
+from typing import Tuple, Any
+import math
 
 
 def get_sampler(
@@ -116,51 +110,58 @@ def create_loaders(
     num_workers: int = 0,
     mu: int = 7,
     total_iters: int = None,
-) -> (DataLoader, DataLoader, DataLoader):
+) -> Tuple[Tuple[DataLoader, DataLoader], DataLoader, DataLoader]:
     """
+    Create data loaders for semi-supervised learning.
+
     Parameters
     ----------
-    args: argparse.Namespace
-        Namespace object that contains all command line arguments with their corresponding values.
+    args: Any
+        Object containing command line arguments.
     train_labeled: Dataset
-        Labeled training dataset for semi-supervised learning.
+        Labeled training dataset.
     train_unlabeled: Dataset
-        Unlabeled training dataset for semi-supervised learning.
+        Unlabeled training dataset.
     validation_dataset: Dataset
         Validation dataset.
     test_dataset: Dataset
         Test dataset.
     batch_size: int
-        Batch size specifying how many samples per batch are loaded. The given batch size is used for all dataloaders,
-        except the unlabeled train loader - semi-supervised learning algorithms commonly use a multiple of the batch
-        size used for labeled train loader for the unlabeled train loader.
-    num_workers: int (default: 0)
-        Number of subprocesses used for data loading. If num_workers=0, data loading is executed in the main process.
-    mu: int (default: 7)
-        Multiplication factor which is used to compute the batch_size for the unlabeled train dataset. In Fixmatch
-        this factor is set to 1, i.e. at every iteration the same number of samples is loaded from the labeled and
-        the unlabeled train datasets. In FixMatch this factor is set to 7.
-    total_iters: int (default: None)
-        total_iters specifies the total number of desired training iterations per epoch. If not None,
-        the product of total_iters and batch_size is used to compute the total number of samples used for training
-        at every epoch. Note: This is required as FixMatch deviates from the conventional definition of `epoch`,
-        i.e. it trains for 1024 iterations per epoch passing through a dataset such as CIFAR-10 multiple times.
+        Batch size for labeled data.
+    num_workers: int
+        Number of subprocesses for data loading.
+    mu: int
+        Multiplier for unlabeled batch size.
+    total_iters: int, optional
+        Total number of iterations per epoch. If None, it's calculated automatically.
+
     Returns
-    ----------
-    data_loaders: Tuple[Tuple[DataLoader, DataLoader], DataLoader, DataLoader]
-        Returns a tuple of all data loaders required for semi-supervised learning.
+    -------
+    Tuple[Tuple[DataLoader, DataLoader], DataLoader, DataLoader]
+        Tuple containing (labeled_loader, unlabeled_loader), validation_loader, test_loader.
     """
-    num_labeled_samples = (
-        len(train_labeled) if total_iters is None else total_iters * batch_size
+    if total_iters is None:
+        # Calculate total_iters to cover the entire dataset at least once
+        total_iters = math.ceil(max(len(train_labeled), len(train_unlabeled) / mu) / batch_size)
+
+    num_labeled_samples = total_iters * batch_size
+
+    labeled_sampler = get_sampler(
+        train_labeled,
+        num_samples=num_labeled_samples,
+        reweighted=args.weighted_sampling,
     )
+    
+    unlabeled_sampler = get_sampler(
+        train_unlabeled,
+        num_samples=num_labeled_samples * mu,
+        reweighted=False,
+    )
+
     train_loader_labeled = DataLoader(
         train_labeled,
         batch_size=batch_size,
-        sampler=get_sampler(
-            train_labeled,
-            num_samples=num_labeled_samples,
-            reweighted=args.weighted_sampling,
-        ),
+        sampler=labeled_sampler,
         num_workers=num_workers,
         drop_last=False,
         pin_memory=args.pin_memory
@@ -169,9 +170,7 @@ def create_loaders(
     train_loader_unlabeled = DataLoader(
         train_unlabeled,
         batch_size=batch_size * mu,
-        sampler=get_sampler(
-            train_unlabeled, num_samples=num_labeled_samples * mu, reweighted=False
-        ),
+        sampler=unlabeled_sampler,
         num_workers=num_workers,
         drop_last=False,
         pin_memory=args.pin_memory
@@ -181,7 +180,7 @@ def create_loaders(
         validation_dataset,
         batch_size=batch_size,
         num_workers=num_workers,
-        shuffle=True,
+        shuffle=False,
         pin_memory=args.pin_memory,
     )
 
@@ -189,11 +188,8 @@ def create_loaders(
         test_dataset,
         batch_size=batch_size,
         num_workers=num_workers,
-        shuffle=True,
+        shuffle=False,
         pin_memory=args.pin_memory,
     )
-    return (
-        (train_loader_labeled, train_loader_unlabeled),
-        validation_loader,
-        test_loader,
-    )
+
+    return (train_loader_labeled, train_loader_unlabeled), validation_loader, test_loader

@@ -59,7 +59,7 @@ def main(args, save_path: str):
         test_set,
         args.batch_size,
         mu=args.mu,
-        total_iters=args.iters_per_epoch,
+        total_iters=None,
         num_workers=args.num_workers,
     )
 
