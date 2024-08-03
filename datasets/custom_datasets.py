@@ -285,7 +285,7 @@ class YOLODATASET(Dataset):
         target_transform: Optional[Callable] = None,
         download: bool = False,
         train_split: float = 9 / 10,
-        img_size: int = 224,
+        img_size: int = 64,
     ):
          """
         Parameters
