@@ -8,7 +8,7 @@ IMG_SIZE = {
     "caltech101": 224,  # Caltech101 images have varying resolutions. It is common to train on subsampled 224x224 images
     "caltech256": 224,  # Caltech256 images have varying resolutions. It is common to train on subsampled 224x224 images
     "ham10000": 224,
-    "yolodataset": 224,
+    "yolodataset": 64,
 }
 
 # Mean and standard deviation values used for normalizing input images
