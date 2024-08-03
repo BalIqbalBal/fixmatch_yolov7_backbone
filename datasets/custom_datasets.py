@@ -353,11 +353,8 @@ class YOLODATASET(Dataset):
                 )
             )
             np.random.shuffle(class_paths)
-            split_idx = int(len(class_paths) * self.train_split)
-            split_class_paths = (
-                class_paths[:split_idx] if self.train else class_paths[split_idx:]
-            )
-            for image in split_class_paths:
+            
+            for image in class_paths:
                 image_path = os.path.join(base_path, image_class, image)
                 self.data.append(image_path)
                 self.targets.append(self.classes_to_idx[image_class])
