@@ -7,6 +7,10 @@ from torch.utils.data import Dataset
 from datasets.config import *
 from datasets.custom_datasets import *
 
+import numpy as np
+import random
+from typing import List, Tuple
+
 
 DATASET_GETTERS = {
     "cifar10": datasets.CIFAR10,
@@ -79,9 +83,9 @@ def get_datasets(
     base_indices = list(range(len(base_set)))
     if dataset_indices is None:
         if dataset != 'stl10':
-            num_training = len(base_indices) - num_validation
-            train_indices, validation_indices = get_uniform_split(base_set.targets, base_indices, split_num=num_training)
-            labeled_indices, unlabeled_indices = get_uniform_split(base_set.targets, train_indices, split_num=num_labeled)
+            num_training = 1 - num_validation
+            train_indices, validation_indices = get_uniform_split(base_set.targets, base_indices, split_pct=num_training)
+            labeled_indices, unlabeled_indices = get_uniform_split(base_set.targets, train_indices, split_pct=num_labeled)
         else:
             labeled_indices, unlabeled_indices, validation_indices = sample_stl10_ssl_indices(
                 base_set.targets,
@@ -121,99 +125,55 @@ def get_base_sets(dataset, root_dir, download=True, test_transform=None):
     )
     return base_set, test_set
 
-
-def sample_stl10_ssl_indices(
-        targets: List,
-        stl10_labeled: List,
-        stl10_unlabeled: List,
-        num_validation: int,
-        num_labeled: int
-):
+def get_uniform_split(targets: List, indices: List, split_pct: float = None, split_num: int = None) -> Tuple[List, List]:
     """
-    Custom sampling strategy for labeled and unlabeled training indices as well as validation indices for STL-10. STL-10
-    is a dataset specifically constructed for semi-supervised learning. Therefore the train set contains both labeled
-    and unlabeled samples. As a consequence, only labeled samples can be considered for the selection of the labeled
-    training as well as validation indices.
+    Method that splits provided train_indices uniformly according to targets / class labels.
 
     Parameters
     ----------
     targets: List
         List of targets / class labels corresponding to provided indices of dataset.
-    stl10_labeled: List
-        List of indices in the STL-10 dataset, which are labeled.
-    stl10_unlabeled: List
-        List of indices in the STL-10 dataset, which are not labeled.
-    num_validation: int
-        Number of samples, which are sampled for the validation set.
-    num_labeled: int
-        Number of samples, which are sampled for the labeled dataset. This does not refer to the labeled part of the
-        STL-10 dataset, but the subset of labeled samples for the current semi-supervised learning run, i.e. this
-        allows for training only on a subset of labeled samples on STL-10.
-    Returns
-    ----------
-    indices_tuple: Tuple[List, List, List]
-        Return selected indices for the labeled and unlabeled train set as well as the validation set.
-    """
-    base_labeled_targets = np.array(targets)[stl10_labeled].tolist()
-    train_indices, validation_indices = get_uniform_split(
-        base_labeled_targets,
-        stl10_labeled,
-        split_num=len(stl10_labeled)-num_validation
-    )
-    labeled_idx, unlabeled_idx = get_uniform_split(base_labeled_targets, train_indices, split_num=num_labeled)
-    validation_indices = np.array(stl10_labeled)[validation_indices].tolist()
-    labeled_indices = np.array(stl10_labeled)[labeled_idx].tolist()
-    unlabeled_indices = (
-            np.array(stl10_labeled)[unlabeled_idx].tolist()
-            + stl10_unlabeled
-    )
-    return labeled_indices, unlabeled_indices, validation_indices
-
-
-def get_uniform_split(targets: List, indices: List, split_pct: float = None, split_num: int = None):
-    """
-    Method that splits provided train_indices uniformly according to targets / class labels, i.e. it returns a random
-    split of train_indices s.t. indices in both splits are ideally uniformly distributed among classes (as done
-    in FixMatch implementation by default).
-
-    Parameters
-    ----------
     indices: List
         List of dataset indices on which split should be performed.
-    targets: List
-        List of targets / class labels corresponding to provided indices of dataset. Based on the provided targets,
-        the indices are split s.t. samples in split0 and split1 are uniformly distributed among classes as well as
-        possible.
     split_num: int
-        Number of total samples selected for first split. Alternatively one can specify a split percentage by providing
-        split_pct as input.
+        Number of total samples selected for first split.
     split_pct: float
-        Percentage of all indices which are selected for the first split. Should only specified if split_num is not given.
+        Percentage of all indices which are selected for the first split.
+
     Returns
-    ----------
+    -------
     split_indices: Tuple[List, List]
         Returns two lists, which contain the indices split according to the parameters split_num or split_pct.
     """
-    if split_pct is not None:
-        samples_per_class = (split_pct * len(indices)) // len(np.unqiue(targets))
-    elif split_num is not None:
-        samples_per_class = split_num // len(np.unique(targets))
-    else:
+
+    if split_pct is not None and split_num is not None:
+        raise ValueError('Expected either split_pct or split_num, not both.')
+    
+    if split_pct is None and split_num is None:
         raise ValueError('Expected either split_pct or split_num to be not None.')
 
-    split0_indices, split1_indices = [], []
-    for class_label in np.unique(targets):
-        class_indices = np.where(np.array(targets)[indices] == class_label)[0]
-        np.random.shuffle(class_indices)
-        split0_indices += list(class_indices[:samples_per_class])
-        split1_indices += list(class_indices[samples_per_class:])
-    split0_indices = np.array(indices)[split0_indices].tolist()
-    split1_indices = np.array(indices)[split1_indices].tolist()
+    unique_targets = np.unique(targets)
+    num_classes = len(unique_targets)
 
-    # Make sure that the number of selected indices exactly matches split_num if not None
-    # If this is not the case, randomly sample indices from split1 and add them to split0
-    if split_num is not None and len(split0_indices) < split_num:
-        tmp_indices = random.sample(split1_indices, split_num - len(split0_indices))
-        split0_indices += tmp_indices
-        split1_indices = np.setdiff1d(split1_indices, tmp_indices).tolist()
+    if split_pct is not None:
+        split_num = int(split_pct * len(indices))
+
+    target_array = np.array(targets)
+    indices_array = np.array(indices)
+
+    split0_indices, split1_indices = [], []
+    for class_label in unique_targets:
+        class_indices = indices_array[target_array[indices_array] == class_label]
+        np.random.shuffle(class_indices)
+        samples_for_class = min(len(class_indices), split_num // num_classes)
+        split0_indices.extend(class_indices[:samples_for_class])
+        split1_indices.extend(class_indices[samples_for_class:])
+
+    # Adjust split0_indices to match split_num exactly
+    if len(split0_indices) < split_num:
+        additional_needed = split_num - len(split0_indices)
+        additional_indices = np.random.choice(split1_indices, size=additional_needed, replace=False)
+        split0_indices.extend(additional_indices)
+        split1_indices = list(set(split1_indices) - set(additional_indices))
+    
     return split0_indices, split1_indices

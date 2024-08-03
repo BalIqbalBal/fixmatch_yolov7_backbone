@@ -179,7 +179,7 @@ def parse_args():
     )
     parser.add_argument(
         "--num-validation",
-        type=int,
+        type=float,
         default=1,
         help="Defines percentage used for training and validation",
     )
