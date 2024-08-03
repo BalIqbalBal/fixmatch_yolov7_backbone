@@ -108,23 +108,49 @@ def write_metrics(writer: SummaryWriter, epoch: int, metrics: evaluation_metrics
         metrics.f1_weighted,
         epoch,
     )
+    
+    # Handle multi-class confusion matrix metrics
+    num_classes = len(metrics.tp)
+    for i in range(num_classes):
+        writer.add_scalar(
+            f"Confusion_matrix/{descriptor}_true_positives_class_{i}",
+            metrics.tp[i],
+            epoch,
+        )
+        writer.add_scalar(
+            f"Confusion_matrix/{descriptor}_false_positives_class_{i}",
+            metrics.fp[i],
+            epoch,
+        )
+        writer.add_scalar(
+            f"Confusion_matrix/{descriptor}_true_negatives_class_{i}",
+            metrics.tn[i],
+            epoch,
+        )
+        writer.add_scalar(
+            f"Confusion_matrix/{descriptor}_false_negatives_class_{i}",
+            metrics.fn[i],
+            epoch,
+        )
+
+    # Add overall confusion matrix metrics
     writer.add_scalar(
-        "Confusion_matrix/{}_true_positives".format(descriptor),
-        metrics.tp,
+        f"Confusion_matrix/{descriptor}_true_positives_overall",
+        metrics.tp.sum(),
         epoch,
     )
     writer.add_scalar(
-        "Confusion_matrix/{}_false_positives".format(descriptor),
-        metrics.fp,
+        f"Confusion_matrix/{descriptor}_false_positives_overall",
+        metrics.fp.sum(),
         epoch,
     )
     writer.add_scalar(
-        "Confusion_matrix/{}_true_negatives".format(descriptor),
-        metrics.tn,
+        f"Confusion_matrix/{descriptor}_true_negatives_overall",
+        metrics.tn.sum(),
         epoch,
     )
     writer.add_scalar(
-        "Confusion_matrix/{}_false_negatives".format(descriptor),
-        metrics.fn,
+        f"Confusion_matrix/{descriptor}_false_negatives_overall",
+        metrics.fn.sum(),
         epoch,
     )
