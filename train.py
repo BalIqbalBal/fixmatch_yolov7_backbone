@@ -426,13 +426,12 @@ def train_epoch(
     all_true_labels = torch.cat(all_true_labels)
 
     tp, fp, tn, fn = confusion_matrix_metrics(all_true_labels, all_pred_labels)
+    
 
     train_metrics = evaluation_metrics(
         meters["total_loss"].avg,
         meters["labeled_loss"].avg,
         meters["unlabeled_loss"].avg,
-        top1=meters["top1"].avg,
-        top5=meters["top5"].avg,
         prec=precision(pred_labels.cpu(), true_labels.cpu(), average="micro"),
         rec=recall(pred_labels.cpu(), true_labels.cpu(), average="micro"),
         f1=f1(pred_labels.cpu(), true_labels.cpu(), average="micro"),
