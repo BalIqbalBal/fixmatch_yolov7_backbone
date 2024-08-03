@@ -1,7 +1,14 @@
-from torch.utils.data import DataLoader, Dataset
-from torch.utils.data.sampler import Sampler
-from typing import Tuple, Any
+from typing import Union, Tuple, NamedTuple, List
 import math
+import numpy as np
+from torch.utils.data import (
+    Dataset,
+    DataLoader,
+    Sampler,
+    RandomSampler,
+    WeightedRandomSampler,
+)
+
 
 
 def get_sampler(
