@@ -378,6 +378,10 @@ def train_epoch(
     train_stats: Tuple
         The method returns a tuple containing the total, labeled and unlabeled loss.
     """
+
+    all_pred_labels = []
+    all_true_labels = []
+    
     meters = AverageMeterSet()
 
     model.zero_grad()
@@ -389,9 +393,6 @@ def train_epoch(
         zip(train_loader_labeled, train_loader_unlabeled)
     ):
         loss, pred_labels, true_labels = train_step(args, model, batch, meters)
-
-        all_pred_labels = []
-        all_true_labels = []
 
         optimizer.zero_grad()
         loss.backward()
