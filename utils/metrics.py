@@ -26,6 +26,7 @@ evaluation_metrics = namedtuple(
         "fp",
         "tn",
         "fn",
+        "cmi"
     ],
 )
 
@@ -100,8 +101,10 @@ def write_metrics(writer: SummaryWriter, epoch: int, metrics: evaluation_metrics
     writer.add_scalar(f"Confusion_matrix/{descriptor}_true_negatives_overall", metrics.tn.sum(), epoch)
     writer.add_scalar(f"Confusion_matrix/{descriptor}_false_negatives_overall", metrics.fn.sum(), epoch)
 
+    # Ensure `metrics.cmi` is a numpy array
+    cm = np.array(metrics.cmi)  # Convert to numpy array if it's not already
+
     # Generate and log confusion matrix image
-    cm = metrics.confusion_matrix
     fig, ax = plt.subplots(figsize=(5, 5))
     ax.matshow(cm, cmap=plt.cm.Blues, alpha=0.7)
     for i in range(cm.shape[0]):

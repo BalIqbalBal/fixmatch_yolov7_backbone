@@ -5,7 +5,6 @@ from tqdm import tqdm
 from typing import Callable, Tuple
 from PIL import Image
 from functools import partial
-from sklearn.metrics import confusion_matrix
 
 import torch
 import torch.nn.functional as F
@@ -449,7 +448,7 @@ def train_epoch(
         fp=fp,
         tn=tn,
         fn=fn,
-        confusion_matrix=confusion_matrix(all_true_labels, all_pred_labels)
+        cmi=confusion_matrix_metrics(all_true_labels, all_pred_labels)
     )
 
     return (

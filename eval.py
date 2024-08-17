@@ -115,7 +115,8 @@ def evaluate(
         tp=tp,
         fp=fp,
         tn=tn,
-        fn=fn
+        fn=fn,
+        cmi=confusion_matrix_metrics(true_labels, pred_labels)
     )
     return eval_tuple
 
