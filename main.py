@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import re
 
 from torch.utils.tensorboard import SummaryWriter
 from polyaxon_client.tracking import get_data_paths, get_outputs_path
@@ -27,7 +28,7 @@ def main(args, save_path: str):
     # Load initial dataset from path specified by args.resume / args.initial_indices if set
     initial_indices = None
     if args.resume:
-        initial_indices = load_dataset_indices(args.resume)
+        initial_indices = load_dataset_indices(re.search(r"^(.*?/run_\d+)", args.resume).group(1))
     elif args.initial_indices:
         path, file_name = os.path.split(args.initial_indices)
         initial_indices = load_dataset_indices(path, file_name)

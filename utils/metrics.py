@@ -2,6 +2,8 @@ from collections import namedtuple
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
+import matplotlib.pyplot as plt
+import io
 from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix
 import numpy as np
 
@@ -65,92 +67,57 @@ def confusion_matrix_metrics(output: torch.Tensor, target: torch.Tensor):
     return tp, fp, tn, fn
 
 
+import matplotlib.pyplot as plt
+import io
+import numpy as np
+from torch.utils.tensorboard import SummaryWriter
+
 def write_metrics(writer: SummaryWriter, epoch: int, metrics: evaluation_metrics, descriptor: str = "val"):
     writer.add_scalar("Loss/{}_total".format(descriptor), metrics.loss, epoch)
     writer.add_scalar("Accuracy/{}_acc_1".format(descriptor), metrics.top1, epoch)
     writer.add_scalar("Accuracy/{}_acc_5".format(descriptor), metrics.top5, epoch)
-    writer.add_scalar(
-        "Classification_metrics/{}_precision".format(descriptor), metrics.prec, epoch
-    )
-    writer.add_scalar(
-        "Classification_metrics/{}_recall".format(descriptor), metrics.rec, epoch
-    )
-    writer.add_scalar(
-        "Classification_metrics/{}_f1score".format(descriptor), metrics.f1, epoch
-    )
-    writer.add_scalar(
-        "Classification_metrics/{}_precision_macro".format(descriptor),
-        metrics.prec_macro,
-        epoch,
-    )
-    writer.add_scalar(
-        "Classification_metrics/{}_recall_macro".format(descriptor),
-        metrics.rec_macro,
-        epoch,
-    )
-    writer.add_scalar(
-        "Classification_metrics/{}_f1score_macro".format(descriptor),
-        metrics.f1_macro,
-        epoch,
-    )
-    writer.add_scalar(
-        "Classification_metrics/{}_precision_weighted".format(descriptor),
-        metrics.prec_weighted,
-        epoch,
-    )
-    writer.add_scalar(
-        "Classification_metrics/{}_recall_weighted".format(descriptor),
-        metrics.rec_weighted,
-        epoch,
-    )
-    writer.add_scalar(
-        "Classification_metrics/{}_f1score_weighted".format(descriptor),
-        metrics.f1_weighted,
-        epoch,
-    )
+    writer.add_scalar("Classification_metrics/{}_precision".format(descriptor), metrics.prec, epoch)
+    writer.add_scalar("Classification_metrics/{}_recall".format(descriptor), metrics.rec, epoch)
+    writer.add_scalar("Classification_metrics/{}_f1score".format(descriptor), metrics.f1, epoch)
+    writer.add_scalar("Classification_metrics/{}_precision_macro".format(descriptor), metrics.prec_macro, epoch)
+    writer.add_scalar("Classification_metrics/{}_recall_macro".format(descriptor), metrics.rec_macro, epoch)
+    writer.add_scalar("Classification_metrics/{}_f1score_macro".format(descriptor), metrics.f1_macro, epoch)
+    writer.add_scalar("Classification_metrics/{}_precision_weighted".format(descriptor), metrics.prec_weighted, epoch)
+    writer.add_scalar("Classification_metrics/{}_recall_weighted".format(descriptor), metrics.rec_weighted, epoch)
+    writer.add_scalar("Classification_metrics/{}_f1score_weighted".format(descriptor), metrics.f1_weighted, epoch)
     
     # Handle multi-class confusion matrix metrics
     num_classes = len(metrics.tp)
     for i in range(num_classes):
-        writer.add_scalar(
-            f"Confusion_matrix/{descriptor}_true_positives_class_{i}",
-            metrics.tp[i],
-            epoch,
-        )
-        writer.add_scalar(
-            f"Confusion_matrix/{descriptor}_false_positives_class_{i}",
-            metrics.fp[i],
-            epoch,
-        )
-        writer.add_scalar(
-            f"Confusion_matrix/{descriptor}_true_negatives_class_{i}",
-            metrics.tn[i],
-            epoch,
-        )
-        writer.add_scalar(
-            f"Confusion_matrix/{descriptor}_false_negatives_class_{i}",
-            metrics.fn[i],
-            epoch,
-        )
+        writer.add_scalar(f"Confusion_matrix/{descriptor}_true_positives_class_{i}", metrics.tp[i], epoch)
+        writer.add_scalar(f"Confusion_matrix/{descriptor}_false_positives_class_{i}", metrics.fp[i], epoch)
+        writer.add_scalar(f"Confusion_matrix/{descriptor}_true_negatives_class_{i}", metrics.tn[i], epoch)
+        writer.add_scalar(f"Confusion_matrix/{descriptor}_false_negatives_class_{i}", metrics.fn[i], epoch)
 
     # Add overall confusion matrix metrics
-    writer.add_scalar(
-        f"Confusion_matrix/{descriptor}_true_positives_overall",
-        metrics.tp.sum(),
-        epoch,
-    )
-    writer.add_scalar(
-        f"Confusion_matrix/{descriptor}_false_positives_overall",
-        metrics.fp.sum(),
-        epoch,
-    )
-    writer.add_scalar(
-        f"Confusion_matrix/{descriptor}_true_negatives_overall",
-        metrics.tn.sum(),
-        epoch,
-    )
-    writer.add_scalar(
-        f"Confusion_matrix/{descriptor}_false_negatives_overall",
-        metrics.fn.sum(),
-        epoch,
-    )
+    writer.add_scalar(f"Confusion_matrix/{descriptor}_true_positives_overall", metrics.tp.sum(), epoch)
+    writer.add_scalar(f"Confusion_matrix/{descriptor}_false_positives_overall", metrics.fp.sum(), epoch)
+    writer.add_scalar(f"Confusion_matrix/{descriptor}_true_negatives_overall", metrics.tn.sum(), epoch)
+    writer.add_scalar(f"Confusion_matrix/{descriptor}_false_negatives_overall", metrics.fn.sum(), epoch)
+
+    # Generate and log confusion matrix image
+    cm = metrics.confusion_matrix
+    fig, ax = plt.subplots(figsize=(5, 5))
+    ax.matshow(cm, cmap=plt.cm.Blues, alpha=0.7)
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(x=j, y=i, s=cm[i, j], va='center', ha='center')
+    plt.xlabel('Predictions')
+    plt.ylabel('True Labels')
+
+    # Convert the plot to a PNG image
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close(fig)
+    buf.seek(0)
+    
+    # Convert the PNG buffer to a numpy array
+    image = np.array(plt.imread(buf, format='png'))
+    
+    # Log the image to TensorBoard
+    writer.add_image(f"Confusion_matrix/{descriptor}_image", image, epoch, dataformats='HWC')
