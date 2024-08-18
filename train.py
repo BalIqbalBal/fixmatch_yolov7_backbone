@@ -23,6 +23,7 @@ from datasets.config import IMG_SIZE
 from utils.train import EMA, cosine_lr_decay, get_wd_param_list
 from utils.eval import AverageMeterSet
 from utils.metrics import write_metrics, accuracy, precision, recall, f1, evaluation_metrics, confusion_matrix_metrics
+from sklearn.metrics import confusion_matrix
 
 from utils.misc import save_state, load_state
 
@@ -448,7 +449,7 @@ def train_epoch(
         fp=fp,
         tn=tn,
         fn=fn,
-        cmi=confusion_matrix_metrics(all_true_labels, all_pred_labels)
+        cmi=confusion_matrix(all_true_labels.cpu(), all_pred_labels.cpu()
     )
 
     return (

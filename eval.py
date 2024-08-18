@@ -10,6 +10,9 @@ from torch.utils.data import DataLoader
 from utils.eval import AverageMeterSet
 from utils.metrics import accuracy, precision, recall, f1, evaluation_metrics, confusion_matrix_metrics
 
+from sklearn.metrics import confusion_matrix
+
+
 
 logger = logging.getLogger()
 
@@ -116,7 +119,7 @@ def evaluate(
         fp=fp,
         tn=tn,
         fn=fn,
-        cmi=confusion_matrix_metrics(true_labels, pred_labels)
+        cmi=confusion_matrix(true_labels.cpu(), pred_labels.cpu()
     )
     return eval_tuple
 
